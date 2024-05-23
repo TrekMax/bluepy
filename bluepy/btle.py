@@ -11,6 +11,7 @@ import binascii
 import select
 import struct
 import signal
+from rich import print
 from queue import Queue, Empty
 from threading import Thread
 
@@ -321,13 +322,20 @@ class BluepyHelper:
         self._writeCmd(cmd + '\n')
         rsp = self._waitResp('mgmt')
         if rsp['code'][0] != 'success':
+            print(f"rsp: <{rsp}>")
+            # if rsp['emsg'] is None: 
+            #     return
+            if rsp['emsg'][0] == 'Already Paired':
+                print(f"Already Paired")
+                return
             self._stopHelper()
             raise BTLEManagementError("Failed to execute management command '%s'" % (cmd), rsp)
 
     @staticmethod
-    def parseResp(line):
+    def parseResp(line): 
         resp = {}
         for item in line.rstrip().split('\x1e'):
+            print("item:" + item)
             (tag, tval) = item.split('=')
             if len(tval)==0:
                 val = None
@@ -460,6 +468,10 @@ class Peripheral(BluepyHelper):
         while rsp and rsp['state'][0] == 'tryconn':
             rsp = self._getResp('stat', timeout)
         if rsp is None or rsp['state'][0] != 'conn':
+            print(f"rsp:<{rsp}>")
+            if rsp["state"][0] == "disc":
+                print("------------------>")
+                return
             self._stopHelper()
             if rsp is None:
                 raise timeout_exception
@@ -935,17 +947,24 @@ if __name__ == '__main__':
         addrType = ADDR_TYPE_PUBLIC
     print("Connecting to: {}, address type: {}".format(devAddr, addrType))
     conn = Peripheral(devAddr, addrType)
+    conn.pair()
     try:
-        for svc in conn.services:
-            print(str(svc), ":")
-            for ch in svc.getCharacteristics():
-                print("    {}, hnd={}, supports {}".format(ch, hex(ch.handle), ch.propertiesToString()))
-                chName = AssignedNumbers.getCommonName(ch.uuid)
-                if (ch.supportsRead()):
-                    try:
-                        print("    ->", repr(ch.read()))
-                    except BTLEException as e:
-                        print("    ->", e)
+        while True:
+            for svc in conn.services:
+                print(str(svc), ":")
+                for ch in svc.getCharacteristics():
+                    print("    {}, hnd={}, supports {}".format(ch, hex(ch.handle), ch.propertiesToString()))
+                    chName = AssignedNumbers.getCommonName(ch.uuid)
+                    if (ch.supportsRead()):
+                        try:
+                            print("    ->", repr(ch.read()))
+                        except BTLEException as e:
+                            print("    ->", e)
+            
+            print("Press <Enter> to disconnect")
+            # input()
+            time.sleep(1)
+            # break
 
     finally:
         conn.disconnect()

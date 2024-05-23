@@ -17,12 +17,16 @@ def get_html(url, local_filename):
             raise
 
     cachefilename = os.path.join(cachedir, local_filename)
+    print("cachefilename:", cachefilename)
 
     try:
-        html = file(cachefilename).read()
+        # html = file(cachefilename).read()
+        html = open(cachefilename).read()
     except:
         html = requests.get(url).content
-        file(cachefilename, 'w').write(html)
+        # file(cachefilename, 'w').write(html)
+        if cachefilename:
+            open(cachefilename, 'w').write(html)
     return html
 
 
