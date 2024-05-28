@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.10)
 project(BluepyHelper)
 
 set(BLUEZ_PATH ${CMAKE_SOURCE_DIR}/bluez-5.47)
-
 include_directories(
     ${BLUEZ_PATH}
     ${BLUEZ_PATH}/attrib
@@ -13,6 +12,7 @@ include_directories(
     ${BLUEZ_PATH}/btio
     ${BLUEZ_PATH}/sys
     ${GLIB2_INCLUDE_DIRS}
+    ${BLUEZ_PATH}/src/shared
 )
 
 set(BLUEZ_SRCS
@@ -35,8 +35,7 @@ set(BLUEZ_SRCS
     ${BLUEZ_PATH}/src/shared/timeout-glib.c
 )
 
-set(LOCAL_SRCS bluepy-helper.c)
-
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 
@@ -47,14 +46,19 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DHAVE_CONFIG_H=1 -Os")
 add_definitions(-DHAVE_CONFIG_H)
 add_definitions(-DBLUEPY_DEBUG)
 
+add_library(bluez STATIC  ${BLUEZ_SRCS})
+# add_library(bluez SHARED  ${BLUEZ_SRCS})
+
 if(BLUEPY)
+    set(LOCAL_SRCS bluepy-helper.c)
     add_definitions(-DBLUEPY_MAIN)
     add_executable(bluepy-helper ${LOCAL_SRCS} ${BLUEZ_SRCS})
     target_link_libraries(bluepy-helper ${GLIB2_LIBRARIES})
 else()
-    set(BLETOOLKIT_SRC bluepy-helper.c bletoolkit.cpp)
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+    set(BLETOOLKIT_SRC bluepy-helper.cc bletoolkit.cc bluepy-dev.c)
 
-    add_executable(bletookit ${BLETOOLKIT_SRC} ${BLUEZ_SRCS})
-    target_link_libraries(bletookit ${GLIB2_LIBRARIES})
+    # target_link_libraries(bletookit ${GLIB2_LIBRARIES} ${BLUEZ_LIBRARIES})
+    add_executable(bletookit ${BLUEZ_SRCS} ${BLETOOLKIT_SRC} )
+    add_library(bluepy SHARED  ${BLUEZ_SRCS} bluepy-helper.cc bluepy-dev.c)
+    target_link_libraries(bletookit ${GLIB2_LIBRARIES} bluez)
 endif()

@@ -11,7 +11,6 @@ import binascii
 import select
 import struct
 import signal
-from rich import print
 from queue import Queue, Empty
 from threading import Thread
 
@@ -245,7 +244,6 @@ class Descriptor:
     def __str__(self):
         return "Descriptor <%s>" % self.uuid.getCommonName()
 
-
     def read(self):
         return self.peripheral.readCharacteristic(self.handle)
 
@@ -322,11 +320,8 @@ class BluepyHelper:
         self._writeCmd(cmd + '\n')
         rsp = self._waitResp('mgmt')
         if rsp['code'][0] != 'success':
-            print(f"rsp: <{rsp}>")
-            # if rsp['emsg'] is None: 
-            #     return
-            if rsp['emsg'][0] == 'Already Paired':
-                print(f"Already Paired")
+            print(f"------>rsp:{rsp}, cmd: {cmd}")
+            if rsp['emsg'][0] == "Already Paired":
                 return
             self._stopHelper()
             raise BTLEManagementError("Failed to execute management command '%s'" % (cmd), rsp)
@@ -335,7 +330,6 @@ class BluepyHelper:
     def parseResp(line): 
         resp = {}
         for item in line.rstrip().split('\x1e'):
-            print("item:" + item)
             (tag, tval) = item.split('=')
             if len(tval)==0:
                 val = None
@@ -368,7 +362,8 @@ class BluepyHelper:
             DBG("Got:", repr(rv))
             if rv.startswith('#') or rv == '\n' or len(rv)==0:
                 continue
-
+            
+            print("------>", rv)
             resp = BluepyHelper.parseResp(rv)
             if 'rsp' not in resp:
                 raise BTLEInternalError("No response type indicator", resp)
@@ -412,7 +407,7 @@ class Peripheral(BluepyHelper):
         BluepyHelper.__init__(self)
         self._serviceMap = None # Indexed by UUID
         (self.deviceAddr, self.addrType, self.iface) = (None, None, None)
-
+        
         if isinstance(deviceAddr, ScanEntry):
             self._connect(deviceAddr.addr, deviceAddr.addrType, deviceAddr.iface, timeout)
         elif deviceAddr is not None:
@@ -459,6 +454,7 @@ class Peripheral(BluepyHelper):
             self._writeCmd("conn %s %s %s\n" % (addr, addrType, "hci"+str(iface)))
         else:
             self._writeCmd("conn %s %s\n" % (addr, addrType))
+        print("--->Connecting to %s, addr type: %s" % (addr, addrType))
         rsp = self._getResp('stat', timeout)
         timeout_exception = BTLEDisconnectError(
             "Timed out while trying to connect to peripheral %s, addr type: %s" %
@@ -468,14 +464,14 @@ class Peripheral(BluepyHelper):
         while rsp and rsp['state'][0] == 'tryconn':
             rsp = self._getResp('stat', timeout)
         if rsp is None or rsp['state'][0] != 'conn':
-            print(f"rsp:<{rsp}>")
-            if rsp["state"][0] == "disc":
-                print("------------------>")
-                return
             self._stopHelper()
             if rsp is None:
                 raise timeout_exception
             else:
+                print("<---Failed to connect to peripheral %s, addr type: %s" %
+                      (addr, addrType)
+                )
+                print("<---Error: %s" % rsp)
                 raise BTLEDisconnectError("Failed to connect to peripheral %s, addr type: %s"
                                           % (addr, addrType), rsp)
 
@@ -947,24 +943,17 @@ if __name__ == '__main__':
         addrType = ADDR_TYPE_PUBLIC
     print("Connecting to: {}, address type: {}".format(devAddr, addrType))
     conn = Peripheral(devAddr, addrType)
-    conn.pair()
     try:
-        while True:
-            for svc in conn.services:
-                print(str(svc), ":")
-                for ch in svc.getCharacteristics():
-                    print("    {}, hnd={}, supports {}".format(ch, hex(ch.handle), ch.propertiesToString()))
-                    chName = AssignedNumbers.getCommonName(ch.uuid)
-                    if (ch.supportsRead()):
-                        try:
-                            print("    ->", repr(ch.read()))
-                        except BTLEException as e:
-                            print("    ->", e)
-            
-            print("Press <Enter> to disconnect")
-            # input()
-            time.sleep(1)
-            # break
+        for svc in conn.services:
+            print(str(svc), ":")
+            for ch in svc.getCharacteristics():
+                print("    {}, hnd={}, supports {}".format(ch, hex(ch.handle), ch.propertiesToString()))
+                chName = AssignedNumbers.getCommonName(ch.uuid)
+                if (ch.supportsRead()):
+                    try:
+                        print("    ->", repr(ch.read()))
+                    except BTLEException as e:
+                        print("    ->", e)
 
     finally:
         conn.disconnect()

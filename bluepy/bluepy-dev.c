@@ -47,13 +47,11 @@
 
 #define IO_CAPABILITY_NOINPUTNOOUTPUT 0x03
 
-#define BLUEPY_DEBUG 1
-
 #ifdef BLUEPY_DEBUG
 #define DBG(fmt, ...)                                             \
     do                                                            \
     {                                                             \
-        printf("# [%s:%d]%s() :" fmt "\n", __FILE__, __LINE__ , __FUNCTION__, ##__VA_ARGS__); \
+        printf("# %s() :" fmt "\n", __FUNCTION__, ##__VA_ARGS__); \
         fflush(stdout);                                           \
     } while (0)
 #else
@@ -1659,6 +1657,7 @@ static void cmd_pair(int argcp, char **argvp)
     bacpy(&cp.addr.bdaddr, &bdaddr);
     cp.addr.type = addr_type;
     cp.io_cap = io_cap;
+
 #if 0
     struct pair_device_data *data;
     /* Reset the pincode_requested flag for a new bonding attempt. */
@@ -1673,17 +1672,22 @@ static void cmd_pair(int argcp, char **argvp)
                   mgmt_ind, sizeof(cp), &cp,
                   pair_device_complete, data,
                   NULL) == 0)
-#else
-    if (mgmt_send(mgmt_master, MGMT_OP_PAIR_DEVICE,
-                  mgmt_ind, sizeof(cp), &cp,
-                  pair_device_complete, NULL,
-                  NULL) == 0)
-#endif
     {
         DBG("mgmt_send(MGMT_OP_PAIR_DEVICE) failed for %s for hci%u", opt_dst, mgmt_ind);
         resp_mgmt(err_SEND_FAIL);
         return;
     }
+#else
+    if (mgmt_send(mgmt_master, MGMT_OP_PAIR_DEVICE,
+                  mgmt_ind, sizeof(cp), &cp,
+                  pair_device_complete, NULL,
+                  NULL) == 0)
+    {
+        DBG("mgmt_send(MGMT_OP_PAIR_DEVICE) failed for %s for hci%u", opt_dst, mgmt_ind);
+        resp_mgmt(err_SEND_FAIL);
+        return;
+    }
+#endif
 }
 
 static void unpair_device_complete(uint8_t status, uint16_t length,
@@ -1742,6 +1746,7 @@ static void cmd_unpair(int argcp, char **argvp)
 
 static void scan_cb(uint8_t status, uint16_t length, const void *param, void *user_data)
 {
+    DBG("----> Scan cb");
     if (status != MGMT_STATUS_SUCCESS)
     {
         DBG("Scan error: %s (0x%02x)", mgmt_errstr(status), status);
@@ -1756,7 +1761,7 @@ static void scan_cb(uint8_t status, uint16_t length, const void *param, void *us
 }
 
 // Unlike Bluez, we follow BT 4.0 spec which renammed Device Discovery by Scan
-static void scan(bool start)
+void bluepy_scan(bool start)
 {
     // mgmt_cp_start_discovery and mgmt_cp_stop_discovery are the same
     struct mgmt_cp_start_discovery cp = {(1 << BDADDR_LE_PUBLIC) | (1 << BDADDR_LE_RANDOM)};
@@ -1787,7 +1792,7 @@ static void cmd_scanend(int argcp, char **argvp)
     }
     else
     {
-        scan(FALSE);
+        bluepy_scan(FALSE);
     }
 }
 
@@ -1799,7 +1804,7 @@ static void cmd_scan(int argcp, char **argvp)
     }
     else
     {
-        scan(TRUE);
+        bluepy_scan(TRUE);
     }
 }
 
@@ -2253,6 +2258,8 @@ static void mgmt_device_found(uint16_t index, uint16_t length,
     if (conn_state != STATE_SCANNING)
         return;
     // confirm_name(&ev->addr, 1);
+
+        // confirm_name(&ev->addr, 1);
 #if 1
     char mac_str[18];
     snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -2277,16 +2284,16 @@ static void mgmt_debug(const char *str, void *user_data)
 {
     // const char *prefix = user_data;
 
-    // DBG("%s%s", (const char *)user_data, str);
+    DBG("%s%s", (const char *)user_data, str);
 }
 
-static void mgmt_setup(unsigned int idx)
+struct mgmt *mgmt_setup(unsigned int idx)
 {
     mgmt_master = mgmt_new_default();
     if (!mgmt_master)
     {
         DBG("Could not connect to the BT management interface, try with su rights");
-        return;
+        return NULL;
     }
     DBG("Setting up mgmt on hci%u", idx);
     mgmt_ind = idx;
@@ -2313,9 +2320,37 @@ static void mgmt_setup(unsigned int idx)
     {
         DBG("mgmt_register(MGMT_EV_DEVICE_FOUND) failed");
     }
+    return mgmt_master;
 }
 
-int main(int argc, char *argv[])
+int bluepy_init()
+{
+    GIOChannel *pchan;
+    gint events;
+
+    opt_sec_level = g_strdup("low");
+
+    opt_src = NULL;
+    opt_dst = NULL;
+    opt_dst_type = g_strdup("public");
+    mgmt_setup(0);
+
+    event_loop = g_main_loop_new(NULL, FALSE);
+
+    pchan = g_io_channel_unix_new(fileno(stdin));
+    g_io_channel_set_close_on_unref(pchan, TRUE);
+    events = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
+    g_io_add_watch(pchan, events, prompt_read, NULL);
+
+    DBG("Starting loop");
+    g_main_loop_run(event_loop);
+
+    DBG("Exiting loop");
+    return 0;
+}
+
+
+int bluepy_main(int argc, char *argv[])
 {
     GIOChannel *pchan;
     gint events;
@@ -2353,7 +2388,7 @@ int main(int argc, char *argv[])
     pchan = g_io_channel_unix_new(fileno(stdin));
     g_io_channel_set_close_on_unref(pchan, TRUE);
     events = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-    // g_io_add_watch(pchan, events, prompt_read, NULL);
+    g_io_add_watch(pchan, events, prompt_read, NULL);
 
     DBG("Starting loop");
     g_main_loop_run(event_loop);

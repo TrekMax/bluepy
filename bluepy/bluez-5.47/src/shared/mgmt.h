@@ -20,9 +20,16 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+#ifndef __BLUEZ_MGMT_H__
+#define __BLUEZ_MGMT_H__
 
 #include <stdbool.h>
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 #define MGMT_VERSION(v, r) (((v) << 16) + (r))
 
@@ -71,3 +78,9 @@ unsigned int mgmt_register(struct mgmt *mgmt, uint16_t event, uint16_t index,
 bool mgmt_unregister(struct mgmt *mgmt, unsigned int id);
 bool mgmt_unregister_index(struct mgmt *mgmt, uint16_t index);
 bool mgmt_unregister_all(struct mgmt *mgmt);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

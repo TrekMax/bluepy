@@ -1,5 +1,6 @@
-bluepy-helper
+build/
 *.pyc
 *.o
-build/
 *.log
+
+bluepy-helper
