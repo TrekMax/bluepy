@@ -2,7 +2,8 @@ from bluepy.btle import Peripheral, DefaultDelegate, UUID
 import time
 
 # 已知的蓝牙设备地址
-device_address = "0C:F5:33:16:64:7B"  # 替换为实际设备地址
+# device_address = "0C:F5:33:16:64:7B"  # 替换为实际设备地址
+device_address = "0c:f5:33:41:1a:da"  # 替换为实际设备地址
 service_uuid = UUID("00001812-0000-1000-8000-00805f9b34fb")
 
 

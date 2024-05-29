@@ -12,15 +12,19 @@
 #ifndef __BLUEPY_HELPER_H__
 #define __BLUEPY_HELPER_H__
 
+#include <functional>
 #include <iostream>
 #include <vector>
 #include <stdexcept>
-#include <functional>
-#include <vector>
-#include <stdexcept>
-#include <functional>
 #include <cstdint>
+#include <atomic>
+#include <condition_variable>
+#include <queue>
 
+#include <cstring>
+#include <unistd.h>
+#include <thread>
+#include <memory>
 namespace bluepy
 {
 
@@ -102,9 +106,10 @@ namespace bluepy
         std::function<void(ConnectState)> cb_connected = connected_handler;
         std::function<void(Disconnect)> cb_disconnected = disconnect_handler;
         std::function<void(PairState)> cb_pair = pair_handler;
+        int ble_mgmt_init(std::condition_variable &cv, std::mutex &mtx, bool &init_done);
 
-        // 扫描、停止扫描
-        int scan(std::function<void()> &cb_scan_result, int timeout);
+            // 扫描、停止扫描
+            int scan(std::function<void()> &cb_scan_result, int timeout);
         int stop_scan();
 
         int connect(std::string device_address);
@@ -133,7 +138,25 @@ namespace bluepy
                 std::function<void(const char *data, int len)> &cb);
 
     };
-}
 
+    class EventLoop
+    {
+    public:
+        EventLoop() : running(false) {}
+        ~EventLoop() { stop(); }
+
+        void start();
+        void stop();
+        void postEvent(const std::function<void()> &event);
+
+    private:
+        void run();
+        std::atomic<bool> running;
+        std::thread loopThread;
+        std::mutex eventMutex;
+        std::condition_variable eventCondition;
+        std::queue<std::function<void()>> eventQueue;
+    };
+}
 #endif // __BLUEPY_HELPER_H__
 

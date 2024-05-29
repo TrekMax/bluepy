@@ -51,23 +51,25 @@ namespace bluepy
 
     }
 
-    BluepyHelper::BluepyHelper(){
-        // cout << ("# " __FILE__ " version " VERSION_STRING " built at " __TIME__ " on " __DATE__ "\n") << endl;
-        // GIOChannel *pchan;
-        // gint events;
-
-        // opt_sec_level = g_strdup("low");
-
-        // opt_src = NULL;
-        // opt_dst = NULL;
-        // opt_dst_type = g_strdup("public");
-
-        // mgmt_master = mgmt_setup(0);
-        bluepy_init();
+    BluepyHelper::BluepyHelper() 
+    {
     }
 
     BluepyHelper::~BluepyHelper()
     {
+    }
+
+    int BluepyHelper::ble_mgmt_init(std::condition_variable &cv, std::mutex &mtx, bool &init_done)
+    {
+        // 初始化完成后通知主线程
+        mgmt_setup(0);
+        bluepy_init();
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            init_done = true;
+        }
+        cv.notify_one();
+        return 0;
     }
 
     int BluepyHelper::connected_handler(ConnectState)
@@ -93,7 +95,7 @@ namespace bluepy
     // 扫描、停止扫描
     int BluepyHelper::scan(std::function<void()> &cb_scan_result, int timeout)
     {
-        cout << "Start Scan" << endl;
+        cout << "----->Start Scan" << endl;
 #if 0
         // mgmt_cp_start_discovery and mgmt_cp_stop_discovery are the same
         struct mgmt_cp_start_discovery cp = {(1 << BDADDR_LE_PUBLIC) | (1 << BDADDR_LE_RANDOM)};
@@ -202,5 +204,56 @@ namespace bluepy
                                             std::function<void(const char *data, int len)> &cb)
     {
         return 0;
+    }
+
+    void EventLoop::start()
+    {
+        running = true;
+        loopThread = std::thread([this]()
+                                 { this->run(); });
+    }
+
+    void EventLoop::stop()
+    {
+        {
+            std::lock_guard<std::mutex> lock(eventMutex);
+            running = false;
+        }
+        eventCondition.notify_all();
+        if (loopThread.joinable())
+        {
+            loopThread.join();
+        }
+    }
+
+    void EventLoop::postEvent(const std::function<void()> &event)
+    {
+        {
+            std::lock_guard<std::mutex> lock(eventMutex);
+            eventQueue.push(event);
+        }
+        eventCondition.notify_one();
+    }
+
+    void EventLoop::run()
+    {
+        while (running)
+        {
+            std::function<void()> event;
+            {
+                std::unique_lock<std::mutex> lock(eventMutex);
+                eventCondition.wait(lock, [this]()
+                                    { return !eventQueue.empty() || !running; });
+
+                if (!running && eventQueue.empty())
+                {
+                    return;
+                }
+
+                event = eventQueue.front();
+                eventQueue.pop();
+            }
+            event();
+        }
     }
 }

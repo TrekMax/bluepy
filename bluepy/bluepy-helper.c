@@ -1630,7 +1630,7 @@ static void cmd_pair(int argcp, char **argvp)
     struct mgmt_cp_pair_device cp;
     bdaddr_t bdaddr;
     uint8_t io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
-    uint8_t addr_type = BDADDR_LE_PUBLIC;
+    uint8_t addr_type = BDADDR_LE_RANDOM;
 
     if (!mgmt_master)
     {
@@ -1659,26 +1659,11 @@ static void cmd_pair(int argcp, char **argvp)
     bacpy(&cp.addr.bdaddr, &bdaddr);
     cp.addr.type = addr_type;
     cp.io_cap = io_cap;
-#if 0
-    struct pair_device_data *data;
-    /* Reset the pincode_requested flag for a new bonding attempt. */
-    adapter->pincode_requested = false;
 
-    data = g_new0(struct pair_device_data, 1);
-    data->adapter = adapter;
-    bacpy(&data->bdaddr, bdaddr);
-    data->addr_type = addr_type;
-
-    if (mgmt_send(mgmt_master, MGMT_OP_PAIR_DEVICE,
-                  mgmt_ind, sizeof(cp), &cp,
-                  pair_device_complete, data,
-                  NULL) == 0)
-#else
     if (mgmt_send(mgmt_master, MGMT_OP_PAIR_DEVICE,
                   mgmt_ind, sizeof(cp), &cp,
                   pair_device_complete, NULL,
                   NULL) == 0)
-#endif
     {
         DBG("mgmt_send(MGMT_OP_PAIR_DEVICE) failed for %s for hci%u", opt_dst, mgmt_ind);
         resp_mgmt(err_SEND_FAIL);
@@ -2277,7 +2262,7 @@ static void mgmt_debug(const char *str, void *user_data)
 {
     // const char *prefix = user_data;
 
-    // DBG("%s%s", (const char *)user_data, str);
+    DBG("%s%s", (const char *)user_data, str);
 }
 
 static void mgmt_setup(unsigned int idx)
@@ -2353,7 +2338,7 @@ int main(int argc, char *argv[])
     pchan = g_io_channel_unix_new(fileno(stdin));
     g_io_channel_set_close_on_unref(pchan, TRUE);
     events = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-    // g_io_add_watch(pchan, events, prompt_read, NULL);
+    g_io_add_watch(pchan, events, prompt_read, NULL);
 
     DBG("Starting loop");
     g_main_loop_run(event_loop);

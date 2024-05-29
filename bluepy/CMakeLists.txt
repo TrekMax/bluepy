@@ -44,21 +44,17 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DBLUEPY_DEBUG=1 -DHAVE_CONFIG_H
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DHAVE_CONFIG_H=1 -Os")
 
 add_definitions(-DHAVE_CONFIG_H)
-add_definitions(-DBLUEPY_DEBUG)
+if(DEBUG)
+    add_definitions(-DBLUEPY_DEBUG)
+endif()
 
 add_library(bluez STATIC  ${BLUEZ_SRCS})
 # add_library(bluez SHARED  ${BLUEZ_SRCS})
 
-if(BLUEPY)
-    set(LOCAL_SRCS bluepy-helper.c)
-    add_definitions(-DBLUEPY_MAIN)
-    add_executable(bluepy-helper ${LOCAL_SRCS} ${BLUEZ_SRCS})
-    target_link_libraries(bluepy-helper ${GLIB2_LIBRARIES})
-else()
-    set(BLETOOLKIT_SRC bluepy-helper.cc bletoolkit.cc bluepy-dev.c)
 
-    # target_link_libraries(bletookit ${GLIB2_LIBRARIES} ${BLUEZ_LIBRARIES})
-    add_executable(bletookit ${BLUEZ_SRCS} ${BLETOOLKIT_SRC} )
-    add_library(bluepy SHARED  ${BLUEZ_SRCS} bluepy-helper.cc bluepy-dev.c)
-    target_link_libraries(bletookit ${GLIB2_LIBRARIES} bluez)
-endif()
+set(BLETOOLKIT_SRC bluepy-helper.cc blue-dev.c)
+# set(BLETOOLKIT_SRC bluepy-helper.cc bluepy-dev.c)
+
+add_library(bluepy SHARED  ${BLUEZ_SRCS} ${BLETOOLKIT_SRC})
+add_executable(bletookit ${BLUEZ_SRCS} ${BLETOOLKIT_SRC} bletoolkit.cc )
+target_link_libraries(bletookit ${GLIB2_LIBRARIES} bluez)
