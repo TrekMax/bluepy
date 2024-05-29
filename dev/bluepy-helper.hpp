@@ -1,26 +1,30 @@
 /**
  * @file bluepy-helper.h
  * @author TianShuang Ke (dske@listenai.com)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2024-05-23
- * 
+ *
  * @copyright Copyright (c) 2021 - 2024 shenzhen listenai co., ltd.
- * 
+ *
  * SPDX-License-Identifier: Apache-2.0
  */
 #ifndef __BLUEPY_HELPER_H__
 #define __BLUEPY_HELPER_H__
 
+#include <functional>
 #include <iostream>
 #include <vector>
 #include <stdexcept>
-#include <functional>
-#include <vector>
-#include <stdexcept>
-#include <functional>
 #include <cstdint>
+#include <atomic>
+#include <condition_variable>
+#include <queue>
 
+#include <cstring>
+#include <unistd.h>
+#include <thread>
+#include <memory>
 namespace bluepy
 {
 
@@ -35,7 +39,6 @@ namespace bluepy
     class BluepyHelper
     {
     private:
-
     public:
         struct Disconnect
         {
@@ -102,6 +105,7 @@ namespace bluepy
         std::function<void(ConnectState)> cb_connected = connected_handler;
         std::function<void(Disconnect)> cb_disconnected = disconnect_handler;
         std::function<void(PairState)> cb_pair = pair_handler;
+        int ble_mgmt_init(std::condition_variable &cv, std::mutex &mtx, bool &init_done);
 
         // 扫描、停止扫描
         int scan(std::function<void()> &cb_scan_result, int timeout);
@@ -126,14 +130,30 @@ namespace bluepy
         int write_char_by_uuid(const char *uuid, const char *data, int len);
 
         // 启用特征值通知
-        int enable_notify_by_handler(uint16_t handle, bool enable, 
-                std::function<void(const char *data, int len)> &cb);
+        int enable_notify_by_handler(uint16_t handle, bool enable,
+                                     std::function<void(const char *data, int len)> &cb);
 
-        int enable_notify_by_uuid(const char *uuid, bool enable, 
-                std::function<void(const char *data, int len)> &cb);
+        int enable_notify_by_uuid(const char *uuid, bool enable,
+                                  std::function<void(const char *data, int len)> &cb);
+    };
 
+    class EventLoop
+    {
+    public:
+        EventLoop() : running(false) {}
+        ~EventLoop() { stop(); }
+
+        void start();
+        void stop();
+        void postEvent(const std::function<void()> &event);
+
+    private:
+        void run();
+        std::atomic<bool> running;
+        std::thread loopThread;
+        std::mutex eventMutex;
+        std::condition_variable eventCondition;
+        std::queue<std::function<void()>> eventQueue;
     };
 }
-
 #endif // __BLUEPY_HELPER_H__
-

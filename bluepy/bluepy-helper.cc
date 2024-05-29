@@ -62,7 +62,7 @@ namespace bluepy
     int BluepyHelper::ble_mgmt_init(std::condition_variable &cv, std::mutex &mtx, bool &init_done)
     {
         // 初始化完成后通知主线程
-        mgmt_setup(0);
+        // mgmt_setup(0);
         bluepy_init();
         {
             std::lock_guard<std::mutex> lock(mtx);
@@ -116,7 +116,7 @@ namespace bluepy
             return 0;
         }
 #endif
-        bluepy_scan(true);
+        // bluepy_scan(true);
         cout << "Scan end" << endl;
         return 0;
     }

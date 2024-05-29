@@ -25,11 +25,15 @@
 #include "config.h"
 #endif
 
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <stdio.h>
-#include <assert.h>
+#include <cstring>
+#include <cstdlib>
+#include <cerrno>
+#include <cstdio>
+#include <cassert>
+#include <iostream>
+#include <thread>
+#include <condition_variable>
+
 #include <glib.h>
 
 #include "lib/bluetooth.h"
@@ -45,11 +49,10 @@
 #include "gatttool.h"
 #include "version.h"
 
+#include "bluepy-dev.h"
+
 #define IO_CAPABILITY_NOINPUTNOOUTPUT 0x03
 
-// #define DBLUEPY_DEBUG 0
-
-// 预处理器宏，用于提取短路径
 #define SHORT_FILE (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
 #ifdef BLUEPY_DEBUG
@@ -61,9 +64,9 @@
     } while (0)
 #else
 #ifdef BLUEPY_DEBUG_FILE_LOG
-static FILE *fp = NULL;
+static FILE *fp = nullptr;
 
-static void try_open(void)
+static void try_open()
 {
     if (!fp)
     {
@@ -87,7 +90,7 @@ static void try_open(void)
 #endif
 
 static uint16_t mgmt_ind = MGMT_INDEX_NONE;
-static struct mgmt *mgmt_master = NULL;
+static struct mgmt *mgmt_master = nullptr;
 struct characteristic_data
 {
     uint16_t orig_start;
@@ -139,7 +142,7 @@ void bluepy_scan(bool start)
     DBG("Scan %s", start ? "start" : "stop");
 
     if (mgmt_send(mgmt_master, opcode, mgmt_ind, sizeof(cp),
-                  &cp, scan_cb, NULL, NULL) == 0)
+                  &cp, scan_cb, nullptr, nullptr) == 0)
     {
         DBG("mgmt_send(MGMT_OP_%s_DISCOVERY) failed", start ? "START" : "STOP");
         // resp_mgmt(err_SEND_FAIL);
@@ -151,7 +154,7 @@ void bluepy_scan(bool start)
 static void read_version_complete(uint8_t status, uint16_t length,
                                   const void *param, void *user_data)
 {
-    const struct mgmt_rp_read_version *rp = param;
+    const struct mgmt_rp_read_version *rp = static_cast<const mgmt_rp_read_version *>(param);
 
     if (status != MGMT_STATUS_SUCCESS)
     {
@@ -173,7 +176,7 @@ static void read_version_complete(uint8_t status, uint16_t length,
 static void mgmt_device_connected(uint16_t index, uint16_t length,
                                   const void *param, void *user_data)
 {
-    const struct mgmt_ev_device_connected *ev = param;
+    const struct mgmt_ev_device_connected *ev = static_cast<const mgmt_ev_device_connected *>(param);
     char mac_str[18];
     snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
              ev->addr.bdaddr.b[0], ev->addr.bdaddr.b[1], ev->addr.bdaddr.b[2],
@@ -189,7 +192,7 @@ static void mgmt_device_connected(uint16_t index, uint16_t length,
 static void mgmt_scanning(uint16_t index, uint16_t length,
                           const void *param, void *user_data)
 {
-    const struct mgmt_ev_discovering *ev = param;
+    const struct mgmt_ev_discovering *ev = static_cast<const mgmt_ev_discovering *>(param);
     assert(length == sizeof(*ev));
 
     DBG("Scanning (0x%x): %s", ev->type, ev->discovering ? "started" : "ended");
@@ -200,7 +203,7 @@ static void mgmt_scanning(uint16_t index, uint16_t length,
 static void mgmt_device_found(uint16_t index, uint16_t length,
                               const void *param, void *user_data)
 {
-    const struct mgmt_ev_device_found *ev = param;
+    const struct mgmt_ev_device_found *ev = static_cast<const mgmt_ev_device_found *>(param);
     // const uint8_t *val = ev->addr.bdaddr.b;
     assert(length == sizeof(*ev) + ev->eir_len);
     // DBG("Device found: %02X:%02X:%02X:%02X:%02X:%02X type=%X flags=%X", val[5], val[4], val[3], val[2], val[1], val[0], ev->addr.type, ev->flags);
@@ -215,14 +218,13 @@ static void mgmt_device_found(uint16_t index, uint16_t length,
              ev->addr.bdaddr.b[0], ev->addr.bdaddr.b[1], ev->addr.bdaddr.b[2],
              ev->addr.bdaddr.b[3], ev->addr.bdaddr.b[4], ev->addr.bdaddr.b[5]);
 
-    printf("Scan | %s [RSSI: %d] %s\r\n",
-        mac_str, -ev->rssi, ev->addr.type == BDADDR_LE_PUBLIC ? "public" : "random");
-
+    std::cout << "Scan | " << mac_str << " [RSSI: " << -ev->rssi << "] "
+              << (ev->addr.type == BDADDR_LE_PUBLIC ? "public" : "random") << std::endl;
 }
 
 static void mgmt_debug(const char *str, void *user_data)
 {
-    DBG("%s%s", (const char *)user_data, str);
+    DBG("%s%s", static_cast<const char *>(user_data), str);
 }
 
 struct mgmt *mgmt_setup(unsigned int idx)
@@ -231,30 +233,30 @@ struct mgmt *mgmt_setup(unsigned int idx)
     if (!mgmt_master)
     {
         DBG("Could not connect to the BT management interface, try with su rights");
-        return NULL;
+        return nullptr;
     }
     DBG("Setting up mgmt on hci%u", idx);
     mgmt_ind = idx;
-    mgmt_set_debug(mgmt_master, mgmt_debug, "mgmt: ", NULL);
+    mgmt_set_debug(mgmt_master, mgmt_debug, (void *)"mgmt: ", nullptr);
 
     if (mgmt_send(mgmt_master, MGMT_OP_READ_VERSION,
-                  MGMT_INDEX_NONE, 0, NULL,
-                  read_version_complete, NULL, NULL) == 0)
+                  MGMT_INDEX_NONE, 0, nullptr,
+                  read_version_complete, nullptr, nullptr) == 0)
     {
         DBG("mgmt_send(MGMT_OP_READ_VERSION) failed");
     }
 
-    if (!mgmt_register(mgmt_master, MGMT_EV_DEVICE_CONNECTED, mgmt_ind, mgmt_device_connected, NULL, NULL))
+    if (!mgmt_register(mgmt_master, MGMT_EV_DEVICE_CONNECTED, mgmt_ind, mgmt_device_connected, nullptr, nullptr))
     {
         DBG("mgmt_register(MGMT_EV_DEVICE_CONNECTED) failed");
     }
 
-    if (!mgmt_register(mgmt_master, MGMT_EV_DISCOVERING, mgmt_ind, mgmt_scanning, NULL, NULL))
+    if (!mgmt_register(mgmt_master, MGMT_EV_DISCOVERING, mgmt_ind, mgmt_scanning, nullptr, nullptr))
     {
         DBG("mgmt_register(MGMT_EV_DISCOVERING) failed");
     }
 
-    if (!mgmt_register(mgmt_master, MGMT_EV_DEVICE_FOUND, mgmt_ind, mgmt_device_found, NULL, NULL))
+    if (!mgmt_register(mgmt_master, MGMT_EV_DEVICE_FOUND, mgmt_ind, mgmt_device_found, nullptr, nullptr))
     {
         DBG("mgmt_register(MGMT_EV_DEVICE_FOUND) failed");
     }
@@ -265,12 +267,8 @@ int bluepy_init()
 {
     mgmt_setup(0);
 
-    static GMainLoop *event_loop;
-    event_loop = g_main_loop_new(NULL, FALSE);
-
-    DBG("Starting loop\n");
-    bluepy_scan(1);
-    g_main_loop_run(event_loop);
+    printf("Starting loop\n");
+    bluepy_scan(true);
 
     DBG("Exiting loop\n");
     return 0;
