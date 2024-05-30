@@ -262,14 +262,3 @@ struct mgmt *mgmt_setup(unsigned int idx)
     }
     return mgmt_master;
 }
-
-int bluepy_init()
-{
-    mgmt_setup(0);
-
-    printf("Starting loop\n");
-    bluepy_scan(true);
-
-    DBG("Exiting loop\n");
-    return 0;
-}

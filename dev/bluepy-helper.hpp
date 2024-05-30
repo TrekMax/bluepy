@@ -36,7 +36,7 @@ namespace bluepy
     };
     using namespace std;
 
-    class BluepyHelper
+    class BLEZpp
     {
     private:
     public:
@@ -99,8 +99,8 @@ namespace bluepy
         static void scan_complete(uint8_t status, uint16_t length, const void *param, void *user_data);
 
     public:
-        BluepyHelper();
-        ~BluepyHelper();
+        BLEZpp();
+        ~BLEZpp();
 
         std::function<void(ConnectState)> cb_connected = connected_handler;
         std::function<void(Disconnect)> cb_disconnected = disconnect_handler;

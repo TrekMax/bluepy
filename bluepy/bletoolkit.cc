@@ -12,7 +12,7 @@
 #include <iostream>
 #include <string>
 #include <thread>
-#include "bluepy-helper.hpp"
+#include "blezpp.hpp"
 
 #include <cstring>
 #include <cstdlib>
@@ -52,7 +52,7 @@ int main(int argc, char const *argv[])
     std::cout << __DATE__ <<" " << __TIME__ << std::endl;
     std::cout << "======================" << std::endl;
 
-    BluepyHelper blehelper;
+    BLEZpp blehelper;
     EventLoop eventLoop;
 
     // bool enable = true;
@@ -61,9 +61,9 @@ int main(int argc, char const *argv[])
     //     cout<< "Connected callback" << endl;
     // };
 
-    // blehelper.cb_disconnected = [](BluepyHelper::Disconnect d)
+    // blehelper.cb_disconnected = [](BLEZpp::Disconnect d)
     // {
-    //     cerr << "Disconnect for reason " << BluepyHelper::get_disconnect_string(d) << endl;
+    //     cerr << "Disconnect for reason " << BLEZpp::get_disconnect_string(d) << endl;
     //     exit(1);
     // };
     // blehelper.connect("0C:F5:33:41:1A:DA");
@@ -95,10 +95,12 @@ int main(int argc, char const *argv[])
     // eventLoop.postEvent([&blehelper]()
     //                     { blehelper.ble_mgmt_init(); });
 
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     blehelper.scan(cb_scan_result, 1000);
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    blehelper.stop_scan();
     cout << "Waiting for scan" << endl;
 
-    std::this_thread::sleep_for(std::chrono::seconds(30));
     eventLoop.stop();
 
     // 处理扫描、连接、配对、读写

@@ -22,11 +22,55 @@
 #include <queue>
 
 #include <cstring>
-#include <unistd.h>
 #include <thread>
 #include <memory>
+
+typedef struct mgmt mgmt;
+typedef struct mgmt_rp_read_version mgmt_rp_read_version;
+
 namespace bluepy
 {
+    template <typename T>
+    class Singleton
+    {
+    public:
+        // 禁止拷贝构造和赋值
+        Singleton(const Singleton &) = delete;
+        Singleton &operator=(const Singleton &) = delete;
+        // 获取单例实例的方法
+        static T &getInstance()
+        {
+            static T instance;
+            return instance;
+        }
+
+    protected:
+        // 私有构造函数，确保外部无法实例化
+        Singleton() {}
+        ~Singleton() {}
+    };
+    class BLEMgmt : public Singleton<BLEMgmt>
+    {
+    friend class Singleton<BLEMgmt>; // 允许基类访问私有构造函数
+    private:
+        mgmt *mgmt_master;
+        unsigned int mgmt_ind;
+
+        static void read_version_complete(uint8_t status, uint16_t length, const void *param, void *user_data);
+        static void mgmt_device_connected(uint16_t index, uint16_t length, const void *param, void *user_data);
+        static void mgmt_scanning(uint16_t index, uint16_t length, const void *param, void *user_data);
+        static void mgmt_device_found(uint16_t index, uint16_t length, const void *param, void *user_data);
+        static void mgmt_debug(const char *str, void *user_data);
+        static void scan_cb(uint8_t status, uint16_t length, const void *param, void *user_data);
+
+    public:
+        int bluetooth_mgmt_init(int hic_dev);
+        int scan(bool enable);
+
+    private:
+        BLEMgmt() {}
+        ~BLEMgmt() {}
+    };
 
     class DefaultDelegate
     {
@@ -36,7 +80,7 @@ namespace bluepy
     };
     using namespace std;
 
-    class BluepyHelper
+    class BLEZpp
     {
     private:
 
@@ -98,10 +142,11 @@ namespace bluepy
         static int disconnect_handler(Disconnect);
         static int pair_handler(PairState);
         static void scan_complete(uint8_t status, uint16_t length, const void *param, void *user_data);
+        BLEMgmt &mgmt = BLEMgmt::getInstance();
 
     public:
-        BluepyHelper();
-        ~BluepyHelper();
+        BLEZpp();
+        ~BLEZpp();
 
         std::function<void(ConnectState)> cb_connected = connected_handler;
         std::function<void(Disconnect)> cb_disconnected = disconnect_handler;

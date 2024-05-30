@@ -52,7 +52,8 @@ add_library(bluez STATIC  ${BLUEZ_SRCS})
 # add_library(bluez SHARED  ${BLUEZ_SRCS})
 
 
-set(BLETOOLKIT_SRC bluepy-helper.cc blue-dev.cpp)
+# set(BLETOOLKIT_SRC blezpp.cc mgmt_wrapper.cpp)
+set(BLETOOLKIT_SRC blezpp.cc)
 # set(BLETOOLKIT_SRC bluepy-helper.cc blue-dev.c)
 # set(BLETOOLKIT_SRC bluepy-helper.cc bluepy-dev.c)
 

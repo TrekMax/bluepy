@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-int bluepy_init();
+// int bluepy_init();
 struct mgmt *mgmt_setup(unsigned int idx);
 void bluepy_scan(bool start);
 
