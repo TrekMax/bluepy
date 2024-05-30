@@ -46,7 +46,7 @@ int main(int argc, char const *argv[])
     std::this_thread::sleep_for(std::chrono::seconds(3));
 
     blehelper.connect("0C:F5:33:16:64:7B");
-    // blehelper.pair();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     int i = 0;
     while (true)
@@ -55,6 +55,7 @@ int main(int argc, char const *argv[])
         std::this_thread::sleep_for(std::chrono::seconds(1));
         if (i++ > 3)
         {
+            blehelper.pair();
             blehelper.scan(false);
             cout << "Stop Scan" << endl;
         }

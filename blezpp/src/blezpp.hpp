@@ -197,7 +197,8 @@ namespace blezpp
         int connect(std::string device_address);
         int connect(std::string device_address, std::function<void()> &cb_connect_result);
 
-        int pair(std::function<void(PairState)> &cb);
+        // int pair(std::function<void(PairState)> &cb);
+        int pair();
         int disconnect(std::function<void(Disconnect)> &disconnect_handler);
 
         // 发现服务、发现特征

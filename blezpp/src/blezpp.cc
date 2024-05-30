@@ -275,7 +275,7 @@ namespace blezpp
         if (err)
         {
             // set_state(STATE_DISCONNECTED);
-            // set_connect_state(Disconnected);
+            set_connect_state(Disconnected);
             // resp_str_error(err_CONN_FAIL, err->message);
             printf("# Connect error: %s\n", err->message);
             return;
@@ -328,6 +328,7 @@ namespace blezpp
         //                   gatts_mtu_req, attrib, NULL);
 
         // connect_state = Connected;
+        set_connect_state(Connected);
 #endif
     }
     void BLEMgmt::disconnect_cb(uint8_t status, uint16_t length, const void *param, void *user_data)
@@ -345,7 +346,7 @@ namespace blezpp
             cout << "status returned error : " << mgmt_errstr(status) << " (0x" << status << ")" << endl;
             return;
         }
-
+        cout << "pair_device_complete" << endl;
         // resp_mgmt(err_SUCCESS);
     }
     void BLEMgmt::pair_cb(uint8_t status, uint16_t length, const void *param, void *user_data)
@@ -446,6 +447,52 @@ namespace blezpp
     }
     int BLEMgmt::pair()
     {
+        struct mgmt_cp_pair_device cp;
+        bdaddr_t bdaddr;
+        uint8_t io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+        uint8_t addr_type = BDADDR_LE_PUBLIC;
+
+        if (!mgmt_master)
+        {
+            // resp_error(err_NO_MGMT);
+            cout << "resp_error(err_NO_MGMT)" << endl;
+            return -1;
+        }
+
+        if (connect_state != ConnectState::Connected)
+        {
+            // resp_mgmt(err_BAD_STATE);
+            cout << "resp_mgmt(err_BAD_STATE)" << endl;
+            return -1;
+        }
+
+        if (str2ba(opt_dst, &bdaddr))
+        {
+            // resp_mgmt(err_NOT_FOUND);
+            cout << "resp_mgmt(err_NOT_FOUND)" << endl;
+            return -1;
+        }
+
+        if (!memcmp(opt_dst_type, "public", 6))
+        {
+            addr_type = BDADDR_LE_PUBLIC;
+        }
+
+        memset(&cp, 0, sizeof(cp));
+        bacpy(&cp.addr.bdaddr, &bdaddr);
+        cp.addr.type = addr_type;
+        cp.io_cap = io_cap;
+
+        if (mgmt_send(mgmt_master, MGMT_OP_PAIR_DEVICE,
+                      mgmt_ind, sizeof(cp), &cp,
+                      pair_device_complete, NULL,
+                      NULL) == 0)
+        {
+            // DBG("mgmt_send(MGMT_OP_PAIR_DEVICE) failed for %s for hci%u", opt_dst, mgmt_ind);
+            // resp_mgmt(err_SEND_FAIL);
+            cout << "mgmt_send(MGMT_OP_PAIR_DEVICE) failed for " << opt_dst << " for hci" << mgmt_ind << endl;
+            return -1;
+        }
         return 0;
     }
     int BLEMgmt::unpair()
@@ -526,8 +573,11 @@ namespace blezpp
         cout << "connect to " << device_address << endl;
         return 0;
     }
-    int BLEZpp::pair(std::function<void(PairState)> &cb)
+    // int BLEZpp::pair(std::function<void(PairState)> &cb)
+    int BLEZpp::pair()
     {
+        cout << "---->pair" << endl;
+        mgmt.pair();
         return 0;
     }
     int BLEZpp::disconnect(std::function<void(Disconnect)> &disconnect_handler)
