@@ -3,6 +3,10 @@
 
 ## Build
 
+```shell
+sudo apt-get install libfmt-dev
+```
+
 
 ```shell
 cmake -B build -G Ninja && cmake --build build

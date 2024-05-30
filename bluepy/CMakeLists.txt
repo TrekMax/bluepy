@@ -38,6 +38,7 @@ set(BLUEZ_SRCS
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
+# find_package(fmt REQUIRED)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DBLUEPY_DEBUG=1 -DHAVE_CONFIG_H=1 -O0")
@@ -59,4 +60,5 @@ set(BLETOOLKIT_SRC blezpp.cc)
 
 add_library(bluepy SHARED  ${BLUEZ_SRCS} ${BLETOOLKIT_SRC})
 add_executable(bletookit ${BLUEZ_SRCS} ${BLETOOLKIT_SRC} bletoolkit.cc )
+# target_link_libraries(bletookit PRIVATE ${GLIB2_LIBRARIES} bluez)
 target_link_libraries(bletookit ${GLIB2_LIBRARIES} bluez)

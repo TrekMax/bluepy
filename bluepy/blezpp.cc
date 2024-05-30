@@ -36,13 +36,13 @@
 #include "gatt.h"
 #include "gatttool.h"
 #include "version.h"
-
-#include "bluepy-dev.h"
+// #include "bluepy-dev.h"
+// #include <fmt/core.h>
 #define DBG(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
+// #define DBG(fmt_str, ...) fmt::print(fmt_str "\n", __VA_ARGS__)
 using namespace std;
 namespace bluepy
 {
-
     int BLEMgmt::bluetooth_mgmt_init(int hic_dev)
     {
         // mgmt_setup(hic_dev);
@@ -146,15 +146,7 @@ namespace bluepy
     {
         // std::cout << "Device found, index: " << index << std::endl;
         const struct mgmt_ev_device_found *ev = static_cast<const mgmt_ev_device_found *>(param);
-        // const uint8_t *val = ev->addr.bdaddr.b;
         assert(length == sizeof(*ev) + ev->eir_len);
-        // DBG("Device found: %02X:%02X:%02X:%02X:%02X:%02X type=%X flags=%X", val[5], val[4], val[3], val[2], val[1], val[0], ev->addr.type, ev->flags);
-
-        // Result sometimes sent too early
-        // if (conn_state != STATE_SCANNING)
-        //     return;
-        // confirm_name(&ev->addr, 1);
-
         char mac_str[18];
         snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
                  ev->addr.bdaddr.b[0], ev->addr.bdaddr.b[1], ev->addr.bdaddr.b[2],
