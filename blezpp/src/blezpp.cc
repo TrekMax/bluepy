@@ -15,36 +15,36 @@
 #include "config.h"
 #endif
 
-#define CLANG_HEAD
-#ifdef CLANG_HEAD
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <stdio.h>
-#include <assert.h>
-#include <glib.h>
-#endif
+#ifndef _USE_BLUEZ_HEAD
+#define _USE_BLUEZ_HEAD
+    #include <string.h>
+    #include <stdlib.h>
+    #include <errno.h>
+    #include <stdio.h>
+    #include <assert.h>
 
-#include <btio/btio.h>
-#include "lib/bluetooth.h"
-#include "lib/sdp.h"
-#include "lib/uuid.h"
-#include "lib/mgmt.h"
-#include "src/shared/mgmt.h"
-#include "att.h"
-#include "gattrib.h"
-#include "gatt.h"
-#include "gatttool.h"
-// #include "version.h"
+    #include <btio/btio.h>
+
+    #include "lib/bluetooth.h"
+    #include "lib/sdp.h"
+    #include "lib/uuid.h"
+    #include "lib/mgmt.h"
+    #include "src/shared/mgmt.h"
+    #include "att.h"
+    #include "gattrib.h"
+    #include "gatt.h"
+#endif
 
 #define DBG(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
 using namespace std;
+
+typedef struct mgmt_rp_read_version mgmt_rp_read_version;
 namespace blezpp
 {
     int BLEMgmt::bluetooth_mgmt_init(int hic_dev)
     {
-        // mgmt_setup(hic_dev);
-        mgmt_ind = hic_dev;
+        DBG("HIC Dev: %d", hic_dev);
+            mgmt_ind = hic_dev;
 
         mgmt_master = mgmt_new_default();
         if (!mgmt_master)
@@ -175,24 +175,42 @@ namespace blezpp
 
     }
 
-    BLEZpp::BLEZpp() 
+    BLEZpp::BLEZpp()
     {
+        mainLoop = g_main_loop_new(nullptr, FALSE);
     }
 
     BLEZpp::~BLEZpp()
     {
+        if (mainLoopThread.joinable())
+        {
+            g_main_loop_quit(mainLoop);
+            mainLoopThread.join();
+        }
+        g_main_loop_unref(mainLoop);
     }
 
-    int BLEZpp::ble_mgmt_init(std::condition_variable &cv, std::mutex &mtx, bool &init_done)
+    int BLEZpp::ble_mgmt_init()
     {
         mgmt.bluetooth_mgmt_init(0);
-        mgmt.scan(true);
-        {
-            std::lock_guard<std::mutex> lock(mtx);
-            init_done = true;
-        }
-        cv.notify_one();
+        // mgmt.scan(true);
+        // static GMainLoop *event_loop;
+        // event_loop = g_main_loop_new(NULL, FALSE);
+        // g_main_loop_run(event_loop);
         return 0;
+    }
+
+    int BLEZpp::init(int hic_dev)
+    {
+        ble_mgmt_init();
+        // mgmt.bluetooth_mgmt_init(hic_dev);
+        mainLoopThread = std::thread(&BLEZpp::runMainLoop, this);
+        return 0;
+    }
+
+    void BLEZpp::runMainLoop()
+    {
+        g_main_loop_run(mainLoop);
     }
 
     int BLEZpp::connected_handler(ConnectState)
@@ -216,16 +234,14 @@ namespace blezpp
     }
 
     // 扫描、停止扫描
-    int BLEZpp::scan(std::function<void()> &cb_scan_result, int timeout)
+    int BLEZpp::scan(std::function<void()> &cb_scan_result)
     {
-        cout << "----->Start Scan" << endl;
         mgmt.scan(true);
         return 0;
     }
     int BLEZpp::stop_scan()
     {
         mgmt.scan(false);
-        cout << "Scan end" << endl;
         return 0;
     }
 
@@ -310,54 +326,4 @@ namespace blezpp
         return 0;
     }
 
-    void EventLoop::start()
-    {
-        running = true;
-        loopThread = std::thread([this]()
-                                 { this->run(); });
-    }
-
-    void EventLoop::stop()
-    {
-        {
-            std::lock_guard<std::mutex> lock(eventMutex);
-            running = false;
-        }
-        eventCondition.notify_all();
-        if (loopThread.joinable())
-        {
-            loopThread.join();
-        }
-    }
-
-    void EventLoop::postEvent(const std::function<void()> &event)
-    {
-        {
-            std::lock_guard<std::mutex> lock(eventMutex);
-            eventQueue.push(event);
-        }
-        eventCondition.notify_one();
-    }
-
-    void EventLoop::run()
-    {
-        while (running)
-        {
-            std::function<void()> event;
-            {
-                std::unique_lock<std::mutex> lock(eventMutex);
-                eventCondition.wait(lock, [this]()
-                                    { return !eventQueue.empty() || !running; });
-
-                if (!running && eventQueue.empty())
-                {
-                    return;
-                }
-
-                event = eventQueue.front();
-                eventQueue.pop();
-            }
-            event();
-        }
-    }
 }

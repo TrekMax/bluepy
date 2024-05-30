@@ -12,7 +12,6 @@
 #include <iostream>
 #include <string>
 #include <thread>
-#include "blezpp.hpp"
 
 #include <cstring>
 #include <cstdlib>
@@ -24,27 +23,10 @@
 #include <condition_variable>
 
 #include <glib.h>
-
-#include "lib/bluetooth.h"
-#include "lib/sdp.h"
-#include "lib/uuid.h"
-#include "lib/mgmt.h"
-#include "src/shared/mgmt.h"
-
-#include <btio/btio.h>
-#include "att.h"
-#include "gattrib.h"
-#include "gatt.h"
-#include "gatttool.h"
-// #include "version.h"
+#include "blezpp.hpp"
 
 using namespace blezpp;
 using namespace std;
-
-void exampleEvent()
-{
-    cout << "Runnig" << endl;
-}
 
 int main(int argc, char const *argv[])
 {
@@ -53,66 +35,27 @@ int main(int argc, char const *argv[])
     std::cout << "======================" << std::endl;
 
     BLEZpp blehelper;
-    EventLoop eventLoop;
-
-    // bool enable = true;
-    // std::function<void()> connect_handler = [&enable](ConnectState)
-    // {
-    //     cout<< "Connected callback" << endl;
-    // };
-
-    // blehelper.cb_disconnected = [](BLEZpp::Disconnect d)
-    // {
-    //     cerr << "Disconnect for reason " << BLEZpp::get_disconnect_string(d) << endl;
-    //     exit(1);
-    // };
-    // blehelper.connect("0C:F5:33:41:1A:DA");
-    // blehelper.connect("0C:F5:33:41:1A:DA", connect_handler);
+    blehelper.init(0);
 
     std::function<void()> cb_scan_result = []()
     {
         cout<< "Scan callback" << endl;
     };
-    eventLoop.start();
     std::cout << "Starting loop" << std::endl;
-    std::condition_variable cv;
-    std::mutex mtx;             // 互斥锁
-    bool init_done = false;
-    // 使用 std::thread 在独立线程中运行 ble_mgmt_init
-    std::thread ble_mgmt_thread([&blehelper, &cv, &mtx, &init_done]() {
-        cout << "ble_mgmt_init in thread" << endl;
-        blehelper.ble_mgmt_init(cv, mtx, init_done);
-        static GMainLoop *event_loop;
-        event_loop = g_main_loop_new(NULL, FALSE);
-        g_main_loop_run(event_loop);
-    });
-    // 等待 ble_mgmt_init 完成
-    cout << "等待 ble_mgmt_init 完成" << endl;
-    {
-        std::unique_lock<std::mutex> lock(mtx);
-        cv.wait(lock, [&init_done]() { return init_done; });
-    }
-    // eventLoop.postEvent([&blehelper]()
-    //                     { blehelper.ble_mgmt_init(); });
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    blehelper.scan(cb_scan_result, 1000);
-    std::this_thread::sleep_for(std::chrono::seconds(5));
-    blehelper.stop_scan();
-    cout << "Waiting for scan" << endl;
+    blehelper.scan(cb_scan_result);
 
-    eventLoop.stop();
-
-    // 处理扫描、连接、配对、读写
+    cout << "Scanning for 10 seconds" << endl;
+    int i = 0;
     while (true)
     {
+        // 处理业务：扫描、连接、配对、读写
         std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    std::cout << "Exiting loop" << std::endl;
-    // 退出时停止 ble_mgmt_thread
-    if (ble_mgmt_thread.joinable())
-    {
-        ble_mgmt_thread.detach(); // 使用 detach 分离线程，避免主线程等待
+        if (i++ > 10)
+        {
+            cout << "Stop Scan" << endl;
+            blehelper.stop_scan();
+        }
     }
 
     return 0;

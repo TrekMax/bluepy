@@ -25,8 +25,9 @@
 #include <thread>
 #include <memory>
 
+#include <glib.h>
+
 typedef struct mgmt mgmt;
-typedef struct mgmt_rp_read_version mgmt_rp_read_version;
 
 namespace blezpp
 {
@@ -142,7 +143,16 @@ namespace blezpp
         static int disconnect_handler(Disconnect);
         static int pair_handler(PairState);
         static void scan_complete(uint8_t status, uint16_t length, const void *param, void *user_data);
+
         BLEMgmt &mgmt = BLEMgmt::getInstance();
+
+    private:
+        GMainLoop *mainLoop;
+        std::thread mainLoopThread;
+
+    private:
+        int ble_mgmt_init();
+        void runMainLoop();
 
     public:
         BLEZpp();
@@ -151,10 +161,10 @@ namespace blezpp
         std::function<void(ConnectState)> cb_connected = connected_handler;
         std::function<void(Disconnect)> cb_disconnected = disconnect_handler;
         std::function<void(PairState)> cb_pair = pair_handler;
-        int ble_mgmt_init(std::condition_variable &cv, std::mutex &mtx, bool &init_done);
+        int init(int hic_dev);
 
-            // 扫描、停止扫描
-            int scan(std::function<void()> &cb_scan_result, int timeout);
+        // 扫描、停止扫描
+        int scan(std::function<void()> &cb_scan_result);
         int stop_scan();
 
         int connect(std::string device_address);
@@ -184,24 +194,6 @@ namespace blezpp
 
     };
 
-    class EventLoop
-    {
-    public:
-        EventLoop() : running(false) {}
-        ~EventLoop() { stop(); }
-
-        void start();
-        void stop();
-        void postEvent(const std::function<void()> &event);
-
-    private:
-        void run();
-        std::atomic<bool> running;
-        std::thread loopThread;
-        std::mutex eventMutex;
-        std::condition_variable eventCondition;
-        std::queue<std::function<void()>> eventQueue;
-    };
 }
 #endif // __BLUEPY_HELPER_H__
 

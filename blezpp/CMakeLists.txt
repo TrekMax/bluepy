@@ -35,7 +35,7 @@ set(BLUEZ_SRCS
     ${BLUEZ_PATH}/src/shared/timeout-glib.c
 )
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 # find_package(fmt REQUIRED)
@@ -52,13 +52,8 @@ endif()
 add_library(bluez STATIC  ${BLUEZ_SRCS})
 # add_library(bluez SHARED  ${BLUEZ_SRCS})
 
-
-# set(BLETOOLKIT_SRC blezpp.cc mgmt_wrapper.cpp)
-set(BLETOOLKIT_SRC blezpp.cc)
-# set(BLETOOLKIT_SRC bluepy-helper.cc blue-dev.c)
-# set(BLETOOLKIT_SRC bluepy-helper.cc bluepy-dev.c)
-
+set(BLETOOLKIT_SRC src/blezpp.cc)
 add_library(bluepy SHARED  ${BLUEZ_SRCS} ${BLETOOLKIT_SRC})
 add_executable(bletookit ${BLUEZ_SRCS} ${BLETOOLKIT_SRC} bletoolkit.cc )
 # target_link_libraries(bletookit PRIVATE ${GLIB2_LIBRARIES} bluez)
-target_link_libraries(bletookit ${GLIB2_LIBRARIES} bluez)
+target_link_libraries(bletookit PRIVATE ${GLIB2_LIBRARIES} bluez)
