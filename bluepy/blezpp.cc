@@ -36,12 +36,10 @@
 #include "gatt.h"
 #include "gatttool.h"
 #include "version.h"
-// #include "bluepy-dev.h"
-// #include <fmt/core.h>
+
 #define DBG(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
-// #define DBG(fmt_str, ...) fmt::print(fmt_str "\n", __VA_ARGS__)
 using namespace std;
-namespace bluepy
+namespace blezpp
 {
     int BLEMgmt::bluetooth_mgmt_init(int hic_dev)
     {

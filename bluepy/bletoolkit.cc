@@ -38,7 +38,7 @@
 #include "gatttool.h"
 #include "version.h"
 
-using namespace bluepy;
+using namespace blezpp;
 using namespace std;
 
 void exampleEvent()

@@ -28,7 +28,7 @@
 typedef struct mgmt mgmt;
 typedef struct mgmt_rp_read_version mgmt_rp_read_version;
 
-namespace bluepy
+namespace blezpp
 {
     template <typename T>
     class Singleton
