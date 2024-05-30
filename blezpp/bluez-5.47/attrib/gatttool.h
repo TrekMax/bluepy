@@ -20,11 +20,24 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+#ifndef __GATT_TOOL_H__
+#define __GATT_TOOL_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 int interactive(const char *src, const char *dst, const char *dst_type,
-								int psm);
+				int psm);
 GIOChannel *gatt_connect(const char *src, const char *dst,
-			const char *dst_type, const char *sec_level,
-			int psm, int mtu, BtIOConnect connect_cb,
-			GError **gerr);
+							const char *dst_type, const char *sec_level,
+							int psm, int mtu, BtIOConnect connect_cb,
+							GError **gerr);
 size_t gatt_attr_data_from_string(const char *str, uint8_t **data);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

@@ -16,3 +16,4 @@ bluez-5.4/attrib/gatttool
 
 .vscode/
 build/
+.cache/

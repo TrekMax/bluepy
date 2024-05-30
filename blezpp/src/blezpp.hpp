@@ -27,10 +27,58 @@
 
 #include <glib.h>
 
+#include <sstream>
+#include <iomanip>
 typedef struct mgmt mgmt;
-
+struct _GAttrib;
+typedef struct _GAttrib GAttrib;
 namespace blezpp
 {
+
+    using namespace std;
+
+    struct Disconnect
+    {
+        enum Reason
+        {
+            ConnectionFailed,
+            UnexpectedError,
+            UnexpectedResponse,
+            WriteError,
+            ReadError,
+            ConnectionClosed,
+        } reason;
+
+        static constexpr int NoErrorCode = 1; // Any positive value
+        int error_code;
+
+        Disconnect(Reason r, int e)
+            : reason(r), error_code(e)
+        {
+        }
+    };
+
+    enum ConnectState
+    {
+        Disconnected,
+        Connecting,
+        Connected,
+        Disconnecting,
+    };
+    struct PairState
+    {
+        enum State
+        {
+            Pairing,
+            Paired,
+            PairFailed,
+        } state;
+
+        PairState(State s)
+            : state(s)
+        {
+        }
+    };
     template <typename T>
     class Singleton
     {
@@ -50,12 +98,29 @@ namespace blezpp
         Singleton() {}
         ~Singleton() {}
     };
+    static GIOChannel *iochannel = NULL;
+    static GAttrib *attrib = NULL;
+    static int connect_state = ConnectState::Disconnected;
+    static mgmt *mgmt_master;
+    static unsigned int mgmt_ind;
+    static gchar *opt_src = NULL;
+    static gchar *opt_dst = NULL;
+    static gchar *opt_dst_type = NULL;
+    static gchar *opt_sec_level = NULL;
+
     class BLEMgmt : public Singleton<BLEMgmt>
     {
     friend class Singleton<BLEMgmt>; // 允许基类访问私有构造函数
     private:
-        mgmt *mgmt_master;
-        unsigned int mgmt_ind;
+        BLEMgmt() {}
+        ~BLEMgmt() {}
+
+        const int opt_psm = 0;
+        int opt_mtu = 0;
+        int start;
+        int end;
+
+        // static int connect_state;
 
         static void read_version_complete(uint8_t status, uint16_t length, const void *param, void *user_data);
         static void mgmt_device_connected(uint16_t index, uint16_t length, const void *param, void *user_data);
@@ -63,95 +128,56 @@ namespace blezpp
         static void mgmt_device_found(uint16_t index, uint16_t length, const void *param, void *user_data);
         static void mgmt_debug(const char *str, void *user_data);
         static void scan_cb(uint8_t status, uint16_t length, const void *param, void *user_data);
+        static void connect_cb(GIOChannel *io, GError *err, gpointer user_data);
+        // static void connect_cb(uint8_t status, uint16_t length, const void *param, void *user_data);
+        static void disconnect_cb(uint8_t status, uint16_t length, const void *param, void *user_data);
+        static void pair_cb(uint8_t status, uint16_t length, const void *param, void *user_data);
+        static void unpair_cb(uint8_t status, uint16_t length, const void *param, void *user_data);
+        static int channel_watcher(GIOChannel *chan, GIOCondition cond, gpointer user_data);
+        static int set_connect_state(int state);
 
+        static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data);
+        static void gatts_find_info_req(const uint8_t *pdu, uint16_t len, gpointer user_data);
+        static void gatts_find_by_type_req(const uint8_t *pdu, uint16_t len, gpointer user_data);
+        static void gatts_read_by_type_req(const uint8_t *pdu, uint16_t len, gpointer user_data);
+
+        static void pair_device_complete(uint8_t status, uint16_t length,
+                                         const void *param, void *user_data);
+    
     public:
         int bluetooth_mgmt_init(int hic_dev);
         int scan(bool enable);
-
-    private:
-        BLEMgmt() {}
-        ~BLEMgmt() {}
+        int connect(const char *addr);
+        int pair();
+        int unpair();
+        int disconnect();
+        // int get_version();
+        // int get_info(const char *addr);
+        // int get_connections();
+        // int get_paired_devices();
+        // int get_devices();
+        // int get_services(const char *addr);
+        // int get_characteristics(const char *addr, const char *uuid);
     };
-
-    class DefaultDelegate
-    {
-    public:
-        DefaultDelegate();
-        ~DefaultDelegate();
-    };
-    using namespace std;
 
     class BLEZpp
     {
     private:
 
     public:
-        struct Disconnect
-        {
-            enum Reason
-            {
-                ConnectionFailed,
-                UnexpectedError,
-                UnexpectedResponse,
-                WriteError,
-                ReadError,
-                ConnectionClosed,
-            } reason;
-
-            static constexpr int NoErrorCode = 1; // Any positive value
-            int error_code;
-
-            Disconnect(Reason r, int e)
-                : reason(r), error_code(e)
-            {
-            }
-        };
-
-        struct ConnectState
-        {
-            enum State
-            {
-                Disconnected,
-                Connecting,
-                Connected,
-                Disconnecting,
-            } state;
-
-            ConnectState(State s)
-                : state(s)
-            {
-            }
-        };
-
-        struct PairState
-        {
-            enum State
-            {
-                Pairing,
-                Paired,
-                PairFailed,
-            } state;
-
-            PairState(State s)
-                : state(s)
-            {
-            }
-        };
 
     private:
         static int connected_handler(ConnectState);
         static int disconnect_handler(Disconnect);
         static int pair_handler(PairState);
-        static void scan_complete(uint8_t status, uint16_t length, const void *param, void *user_data);
+        static int scan_complete(std::string device_address, std::string device_name);
 
         BLEMgmt &mgmt = BLEMgmt::getInstance();
 
     private:
         GMainLoop *mainLoop;
+        // GIOChannel *iochannel = NULL;
         std::thread mainLoopThread;
-
-    private:
-        int ble_mgmt_init();
         void runMainLoop();
 
     public:
@@ -161,11 +187,12 @@ namespace blezpp
         std::function<void(ConnectState)> cb_connected = connected_handler;
         std::function<void(Disconnect)> cb_disconnected = disconnect_handler;
         std::function<void(PairState)> cb_pair = pair_handler;
+        std::function<void(std::string device_address, std::string device_name)> cb_scan_result = scan_complete;
         int init(int hic_dev);
 
         // 扫描、停止扫描
-        int scan(std::function<void()> &cb_scan_result);
-        int stop_scan();
+        int register_scan_callback(std::function<void(std::string device_address, std::string device_name)> &cb_scan_result);
+        int scan(bool enable);
 
         int connect(std::string device_address);
         int connect(std::string device_address, std::function<void()> &cb_connect_result);

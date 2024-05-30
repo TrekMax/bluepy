@@ -4,6 +4,8 @@ project(BluepyHelper)
 
 set(BLUEZ_PATH ${CMAKE_SOURCE_DIR}/bluez-5.47)
 include_directories(
+    ${GLIB2_INCLUDE_DIRS}
+
     ${BLUEZ_PATH}
     ${BLUEZ_PATH}/attrib
     ${BLUEZ_PATH}/lib
@@ -11,7 +13,6 @@ include_directories(
     ${BLUEZ_PATH}/gdbus
     ${BLUEZ_PATH}/btio
     ${BLUEZ_PATH}/sys
-    ${GLIB2_INCLUDE_DIRS}
     ${BLUEZ_PATH}/src/shared
 )
 
@@ -23,7 +24,7 @@ set(BLUEZ_SRCS
     ${BLUEZ_PATH}/attrib/att.c
     ${BLUEZ_PATH}/attrib/gatt.c
     ${BLUEZ_PATH}/attrib/gattrib.c
-    ${BLUEZ_PATH}/attrib/utils.c
+    ${BLUEZ_PATH}/attrib/gatttool.c
     ${BLUEZ_PATH}/btio/btio.c
     ${BLUEZ_PATH}/src/log.c
     ${BLUEZ_PATH}/src/shared/mgmt.c
@@ -43,7 +44,7 @@ pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Wall")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -DBLUEPY_DEBUG=1 -DHAVE_CONFIG_H=1 -O0")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DHAVE_CONFIG_H=1 -Os")
-
+set(CXX_STANDARD 20)
 add_definitions(-DHAVE_CONFIG_H)
 if(DEBUG)
     add_definitions(-DBLUEPY_DEBUG)
@@ -53,7 +54,7 @@ add_library(bluez STATIC  ${BLUEZ_SRCS})
 # add_library(bluez SHARED  ${BLUEZ_SRCS})
 
 set(BLETOOLKIT_SRC src/blezpp.cc)
-add_library(bluepy SHARED  ${BLUEZ_SRCS} ${BLETOOLKIT_SRC})
+add_library(blezpp SHARED  ${BLUEZ_SRCS} ${BLETOOLKIT_SRC})
 add_executable(bletookit ${BLUEZ_SRCS} ${BLETOOLKIT_SRC} bletoolkit.cc )
 # target_link_libraries(bletookit PRIVATE ${GLIB2_LIBRARIES} bluez)
 target_link_libraries(bletookit PRIVATE ${GLIB2_LIBRARIES} bluez)

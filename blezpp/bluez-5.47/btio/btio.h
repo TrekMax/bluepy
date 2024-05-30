@@ -24,6 +24,10 @@
 #ifndef BT_IO_H
 #define BT_IO_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <glib.h>
 
 #define BT_IO_ERROR bt_io_error_quark()
@@ -92,4 +96,8 @@ GIOChannel *bt_io_listen(BtIOConnect connect, BtIOConfirm confirm,
 				gpointer user_data, GDestroyNotify destroy,
 				GError **err, BtIOOption opt1, ...);
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif

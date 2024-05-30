@@ -41,20 +41,22 @@ int main(int argc, char const *argv[])
     {
         cout<< "Scan callback" << endl;
     };
-    std::cout << "Starting loop" << std::endl;
 
-    blehelper.scan(cb_scan_result);
+    blehelper.scan(3);
+    std::this_thread::sleep_for(std::chrono::seconds(3));
 
-    cout << "Scanning for 10 seconds" << endl;
+    blehelper.connect("0C:F5:33:16:64:7B");
+    // blehelper.pair();
+
     int i = 0;
     while (true)
     {
         // 处理业务：扫描、连接、配对、读写
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        if (i++ > 10)
+        if (i++ > 3)
         {
+            blehelper.scan(false);
             cout << "Stop Scan" << endl;
-            blehelper.stop_scan();
         }
     }
 

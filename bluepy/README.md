@@ -16,7 +16,7 @@ cmake -B build -G Ninja -DDEBUG=ON && cmake --build build
 ```
 
 ```shell
-./build/bletookit 
+./build/bletookit
 ```
 
 conn 0C:F5:33:41:1A:DA public
